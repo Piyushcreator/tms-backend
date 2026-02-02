@@ -11,6 +11,42 @@ import { getUserFromReq } from "./graphql/auth.js";
 
 const PORT = process.env.PORT || 4000;
 
+function buildCorsOptions() {
+  const raw = process.env.CORS_ORIGIN || "";
+  const list = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+
+  if (list.length === 0) {
+    return {
+      origin: true,
+      credentials: false,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"]
+    };
+  }
+
+
+  if (list.includes("*")) {
+    return {
+      origin: true,
+      credentials: false,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"]
+    };
+  }
+
+
+  return {
+    origin: list,
+    credentials: false,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  };
+}
+
 async function start() {
   await connectDb(process.env.MONGODB_URI);
 
@@ -19,12 +55,10 @@ async function start() {
 
   const app = express();
 
-  app.use(
-    cors({
-      origin: process.env.CORS_ORIGIN?.split(",") || true,
-      credentials: true
-    })
-  );
+  const corsOptions = buildCorsOptions();
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
+
   app.use(express.json());
 
   app.get("/health", (_, res) => res.json({ ok: true }));
@@ -36,7 +70,7 @@ async function start() {
     })
   );
 
-  app.listen(PORT, () => console.log(`GraphQL running: http://localhost:${PORT}/graphql`));
+  app.listen(PORT, () => console.log(`GraphQL running on port ${PORT} (/graphql)`));
 }
 
 start().catch((e) => {
